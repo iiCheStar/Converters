@@ -2,33 +2,33 @@
 using namespace std;
 
 // Function Prototypes
-void PrintPrespecifiedValues(double Vin, double Vout, double Vripple, double Pmin, double Pmax, double ILminpercent, double ILmaxpercent, double fs);
+void PrintPrespecifiedValues(double Vin, double Vout, double Vripple, double Pmin, double Pmax, double ILdeviation, double fs);
 
 int main()
 {
 	// Initialize Parameters
 	bool parametersSpecified = true;
-	double Vin, Vout, Vripple, Pmin, Pmax, ILminpercent, ILmaxpercent, fs;
+	double Vin, Vout, Vripple, Vtol, Pmin, Pmax, ILdeviation, fs;
 	if (parametersSpecified) {
 		Vin = 3.7;
 		Vout = 2.0;
 		Vripple = 0.75;
+		Vtol = 2;
 		Pmin = 1.25;
 		Pmax = 1.75;
-		ILminpercent = 20;
-		ILmaxpercent = 200 - ILminpercent;
+		ILdeviation = 80; // +/- XX percent
 		fs = 50000;
-		PrintPrespecifiedValues(Vin, Vout, Vripple, Pmin, Pmax, ILminpercent, ILmaxpercent, fs);
+		PrintPrespecifiedValues(Vin, Vout, Vripple, Pmin, Pmax, ILdeviation, fs);
 	}
 	else if (!parametersSpecified) {
 		cout << "The following parameters must be specified:" << endl;
-		cout << "Vin (V) = "; cin >> Vin; cout << endl;
-		cout << "Vout (V) = "; cin >> Vout; cout << endl;
-		cout << "Vripple (%) = "; cin >> Vripple; cout << endl;
-		cout << "Pmin (W) = "; cin >> Pmin; cout << endl;
-		cout << "Pmax (W) = "; cin >> Pmax; cout << endl;
-		cout << "ILmin (%) = "; cin >> ILminpercent; cout << endl;
-		cout << "fs (Hz) = "; cin >> fs; cout << endl;
+		cout << "\t" << "Vin (V) = "; cin >> Vin; cout << endl;
+		cout << "\t" << "Vout (V) = "; cin >> Vout; cout << endl;
+		cout << "\t" << "Vripple (%) = "; cin >> Vripple; cout << endl;
+		cout << "\t" << "Pmin (W) = "; cin >> Pmin; cout << endl;
+		cout << "\t" << "Pmax (W) = "; cin >> Pmax; cout << endl;
+		cout << "\t" << "ILdeviation (%) = +/- "; cin >> ILdeviation; cout << endl;
+		cout << "\t" << "fs (Hz) = "; cin >> fs; cout << endl;
 	}
 
 	// Calculate Parameters
@@ -39,7 +39,7 @@ int main()
 	trise = D * Ts;
 	tfall = Ts - trise;
 
-	// Resistor Designing
+	cout << endl << "----------- Resistor Designing -----------" << endl << endl;
 	double Rmin, Rmax, Rout, Pout, Iout;
 	char valueOkay = 'n';
 	Rmin = pow(Vout, 2) / Pmax; cout << "Rmin (Ohms) = " << Rmin << endl;
@@ -49,16 +49,16 @@ int main()
 		Pout = pow(Vout, 2) / Rout;
 		Iout = Vout / Rout;
 		cout << "Your Buck converter will have the following new parameters:" << endl;
-		cout << "Pout (W) = " << Pout << endl;
-		cout << "Iout (mA) = " << Iout * 1000 << endl;
+		cout << "\t" << "Pout (W) = " << Pout << endl;
+		cout << "\t" << "Iout (mA) = " << Iout * 1000 << endl;
 		cout << endl << "Are you okay with this resistor value? (y/n) "; cin >> valueOkay; cout << endl;
 	}
 
-	// Inductor designing
+	cout << endl << "----------- Inductor Designing -----------" << endl << endl;
 	double dIL, Lmin, L, ILmin, ILmax;
 	valueOkay = 'n';
-	ILmin = ILminpercent * Iout * (1.0 / 100);
-	ILmax = ILmaxpercent * Iout * (1.0 / 100);
+	ILmin = (1 - ILdeviation) * Iout * (1.0 / 100);
+	ILmax = (1 + ILdeviation) * Iout * (1.0 / 100);
 	dIL = ILmax - ILmin;
 	Lmin = (dV / dIL) * trise; cout << "Lmin (uH) = " << Lmin * 1e6 << endl;
 	while (valueOkay == 'n') {
@@ -67,19 +67,17 @@ int main()
 		dIL = (dV / L) * trise;
 		ILmin = Iout - 0.5 * dIL;
 		ILmax = Iout + 0.5 * dIL;
-		ILminpercent = (ILmin / Iout) * 100;
-		ILmaxpercent = (ILmax / Iout) * 100;
+		ILdeviation = (ILmax / Iout) - 1;
 		cout << "Your Buck converter will have the following new parameters:" << endl;
-		cout << "Iout (mA) = " << Iout * 1000 << endl;
-		cout << "dIL (mA) = " << dIL * 1000 << endl;
-		cout << "ILmin (mA) = " << ILmin * 1000 << endl;
-		cout << "ILmax (mA) = " << ILmax * 1000 << endl;
-		cout << "ILmin (% of Iout) = " << ILminpercent << endl;
-		cout << "ILmax (% of Iout) = " << ILmaxpercent << endl;
+		cout << "\t" << "Iout (mA) = " << Iout * 1000 << endl;
+		cout << "\t" << "ILdeviation (%) = +/-" << ILdeviation * 100 << endl;
+		cout << "\t" << "dIL (mA) = " << dIL * 1000 << endl;
+		cout << "\t" << "ILmin (mA) = " << ILmin * 1000 << endl;
+		cout << "\t" << "ILmax (mA) = " << ILmax * 1000 << endl;
 		cout << endl << "Are you okay with this inductor value? (y/n) "; cin >> valueOkay; cout << endl;
 	}
 
-	// Capacitor designing
+	cout << endl << "----------- Capacitor Designing -----------" << endl << endl;
 	double Cmin, C;
 	valueOkay = 'n';
 	Cmin = ((1 - D) * pow(Ts, 2)) / (8 * L * (Vripple / 100)); cout << "Cmin (uF) = " << Cmin * 1e6 << endl;
@@ -88,7 +86,33 @@ int main()
 		C = C * 1e-6;
 		Vripple = 100 * ((1 - D) * pow(Ts, 2)) / (8 * L * C);
 		cout << "Your Buck converter will have the following new parameters:" << endl;
-		cout << "Vripple (%) = " << Vripple << endl;
+		cout << "\t" << "Vripple (%) = " << Vripple << endl;
+		cout << endl << "Are you okay with this capacitor value? (y/n) "; cin >> valueOkay; cout << endl;
+	}
+
+	cout << endl << "----------- A-Stable 555 Timer Designing -----------" << endl << endl;
+	double C1, R1, R2, Rtemp, Dtemp;
+	double C1vals[] = { 0.1*1e-6, 1 * 1e-6, 10 * 1e-6, 33 * 1e-6, 100 * 1e-6 };
+	valueOkay = 'n';
+	cout << "Your Buck converter has these parameters that determine the 555 timer parameters:" << endl << endl;
+	cout << "f (kHz) = " << fs / 1000 << endl;
+	cout << "D = " << D << endl;
+	cout << "Shown below are R1 and R2 values based off some nominal C1 values:" << endl;
+	for (int i = 0; i < size(C1vals); i++) {
+		cout << "\t" << "C1 (uF) = " << C1vals[i] * 1e6 << endl;
+		R1 = (-1 / (log(2) * C1vals[i] * fs)) + ((2 * trise) / (log(2) * C1vals[i]));
+		R2 = (-trise / (log(2) * C1vals[i])) + (1 / (log(2) * C1vals[i] * fs));
+		cout << "\t\t" << "R1 (Ohms) = " << R1 << endl;
+		cout << "\t\t" << "R2 (Ohms) = " << R2 << endl;
+	}
+	while (valueOkay == 'n') {
+		cout << "Please select a C1 capacitor value (uF): "; cin >> C1; cout << endl;
+		C1 = C1 / 1e6;
+		R1 = (-1 / (log(2) * C1 * fs)) + ((2 * trise) / (log(2) * C1));
+		R2 = (-trise / (log(2) * C1)) + (1 / (log(2) * C1 * fs));
+		cout << "Your Buck converter will have the following new parameters:" << endl;
+		cout << "\t" << "R1 (Ohms) = " << R1 << endl;
+		cout << "\t" << "R2 (Ohms) = " << R2 << endl;
 		cout << endl << "Are you okay with this capacitor value? (y/n) "; cin >> valueOkay; cout << endl;
 	}
 
@@ -104,31 +128,33 @@ int main()
 	cout << "\t\t" << "Vripple (%) = " << Vripple << endl;
 	cout << "\t" << "Current:" << endl;
 	cout << "\t\t" << "Iout (mA) = " << Iout * 1000 << endl;
-	cout << "\t\t" << "dIL (mA) = " << dIL * 1000 << endl;
-	cout << "\t\t" << "ILmin (mA) = " << ILmin * 1000 << endl;
-	cout << "\t\t" << "ILmax (mA) = " << ILmax * 1000 << endl;
-	cout << "\t\t" << "ILmin (%) = " << ILminpercent << endl;
-	cout << "\t\t" << "ILmax (%) = " << ILmaxpercent<< endl;
+	//cout << "\t\t" << "dIL (mA) = " << dIL * 1000 << endl;
+	//cout << "\t\t" << "ILmin (mA) = " << ILmin * 1000 << endl;
+	//cout << "\t\t" << "ILmax (mA) = " << ILmax * 1000 << endl;
+	cout << "\t\t" << "ILdeviation (%) = +/-" << ILdeviation * 100 << endl;
 	cout << "\t" << "Power:" << endl;
 	cout << "\t\t" << "Pout (W) = " << Pout << endl;
 	cout << "\t" << "Components:" << endl;
 	cout << "\t\t" << "Rout (Ohms) = " << Rout << endl;
 	cout << "\t\t" << "L (uH) = " << L * 1e6 << endl;
 	cout << "\t\t" << "C (uF) = " << C * 1e6 << endl;
+	cout << "\t" << "A-Stable 555 Timer parameters:" << endl;
+	cout << "\t\t" << "C1 (uF) = " << C1 *1e6 << endl;
+	cout << "\t\t" << "R1 (Ohms) = " << R1 << endl;
+	cout << "\t\t" << "R2 (Ohms) = " << R2 << endl;
 
 	cin.ignore();
 	return 0;
 }
 
-void PrintPrespecifiedValues(double Vin, double Vout, double Vripple, double Pmin, double Pmax, double ILmin, double ILmax, double fs) {
+void PrintPrespecifiedValues(double Vin, double Vout, double Vripple, double Pmin, double Pmax, double ILdeviation, double fs) {
 	cout << "------- Prespecified Values: -------" << endl;
 	cout << "Vin (V) = " << Vin << endl;
 	cout << "Vout (V) = " << Vout << endl;
 	cout << "Vripple (%) = " << Vripple << endl;
 	cout << "Pmin (W) = " << Pmin << endl;
 	cout << "Pmax (W) = " << Pmax << endl;
-	cout << "ILmin (%) = " << ILmin << endl;
-	cout << "ILmax (%) = " << ILmax << endl;
+	cout << "ILdeviation (%) = +/-" << ILdeviation << endl;
 	cout << "fs (Hz) = " << fs << endl;
 	cout << "------------------------------------" << endl << endl;
 }
